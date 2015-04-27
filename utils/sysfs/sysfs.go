@@ -19,15 +19,17 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"runtime"
 	"strconv"
 	"strings"
 )
 
 const (
-	blockDir = "/sys/block"
-	cacheDir = "/sys/devices/system/cpu/cpu"
-	netDir   = "/sys/class/net"
-	dmiDir   = "/sys/class/dmi"
+	blockDir   = "/sys/block"
+	cacheDir   = "/sys/devices/system/cpu/cpu"
+	netDir     = "/sys/class/net"
+	dmiDir     = "/sys/class/dmi"
+	ppcDevTree = "/proc/device-tree"
 )
 
 type CacheInfo struct {
@@ -233,7 +235,20 @@ func (self *realSysFs) GetCacheInfo(id int, name string) (CacheInfo, error) {
 }
 
 func (self *realSysFs) GetSystemUUID() (string, error) {
-	id, err := ioutil.ReadFile(path.Join(dmiDir, "id", "product_uuid"))
+	var uuidPath string
+
+	if strings.Contains(runtime.GOARCH, "ppc64") {
+		//If running on baremetal then UID is /proc/device-tree/system-id
+		//If running on a VM then UUID is /proc/device-tree/vm,uuid
+		uuidPath = path.Join(ppcDevTree, "system-id")
+		if _, err := os.Stat(uuidPath); err != nil {
+			uuidPath = path.Join(ppcDevTree, "vm,uuid")
+		}
+	} else {
+		uuidPath = path.Join(dmiDir, "id", "product_uuid")
+	}
+
+	id, err := ioutil.ReadFile(uuidPath)
 	if err != nil {
 		return "", err
 	}
