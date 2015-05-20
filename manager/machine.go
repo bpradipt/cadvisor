@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"runtime"
 
 	dclient "github.com/fsouza/go-dockerclient"
 	"github.com/golang/glog"
@@ -60,6 +61,9 @@ func getClockSpeed(procInfo []byte) (uint64, error) {
 		return maxFreq, nil
 	}
 	// Fall back to /proc/cpuinfo
+	if strings.Contains(runtime.GOARCH, "ppc64") {
+		CpuClockSpeedMHz, _ = regexp.Compile("clock\\t*: +([0-9]+.[0-9]+)MHz")
+	}
 	matches := CpuClockSpeedMHz.FindSubmatch(procInfo)
 	if len(matches) != 2 {
 		return 0, fmt.Errorf("could not detect clock speed from output: %q", string(procInfo))
